@@ -1,6 +1,26 @@
+// exporting the Router object to be used in the main app.
+const { Router }  = require('express');
+const { vacationPreferencesController } = require('../controllers/preferencesController');
+
+// creating an instance of router express object 
+const vacationPreferenceRouter = Router();
+
+// LOGIC IMPLEMENTATION OF THE ROUTER API IS GOING TO BE IMPLEMENTED - AKA THE ROUTES OF THE API(GET, POST, PUT, DELETE).
+
+
+
+
+
+// making the router object accessible to the main app via app.use('/pathName', routerName)
+module.exports = { vacationPreferenceRouter };
+
+
+
+
 /*
  a router is essensily a way to create another mini instance of our application that has its own logic, routes, and middlewares.
  where we can define all the routes that are related to a specific part of our application and later on we can connect it to our main application.
+ THATS WHERE THE LOGIC IMPLEMENTATION OF THE ROUTER API IS GOING TO BE IMPLEMENTED - AKA THE ROUTES OF THE API(GET, POST, PUT, DELETE).
  for example all the routes addresses here will be related to the vacation preferences of the user.
  for example:
   app.get('/vacationPreferences', (req, res) => { app.send here });
@@ -32,14 +52,7 @@ Binds and listens for connections on the specified host and port.
 app.listen(3000, () => {
   console.log('Example app listening on port 3000!');
 });
-
-
-  */
-
-const { Router } = require('express');
-const { userController } = require('../controllers/userController');
-
-const userRouter = Router();
+*/
 
 /* The paths defined in the router are not meant to be used independently. 
    They are designed to be part of the main application. 
@@ -48,10 +61,6 @@ const userRouter = Router();
    we make the paths in the router accessible through the specified path in the main application.
 */
 
-userRouter.get('/', userController.getUserAccessToken);
-userRouter.post('/', userController.registerUser);
-
 //By using module.exports = { userRouter };, you are making the userRouter object available for other files to import and use.
 // thats becuse module.exports is actually the object that's returned as the result of a require call(in the main app we will do - const { userRouter } = require('./routers/userRouter');
 // )
-module.exports = { userRouter };
