@@ -1,13 +1,14 @@
 // exporting the Router object to be used in the main app.
 const { Router }  = require('express');
-const { vacationPreferencesController } = require('../controllers/preferencesController');
+const { vacationPreferencesController } = require('../controllers/vacationPreferencesController');
 
 // creating an instance of router express object 
 const vacationPreferenceRouter = Router();
 
 // LOGIC IMPLEMENTATION OF THE ROUTER API IS GOING TO BE IMPLEMENTED - AKA THE ROUTES OF THE API(GET, POST, PUT, DELETE).
 
-
+// whenever we will have a get request from the vacationPreferences path, we will call the getPreferences function from the vacationPreferencesController.
+preferencesRouter.get('/', vacationPreferencesController.getPreferences);
 
 
 

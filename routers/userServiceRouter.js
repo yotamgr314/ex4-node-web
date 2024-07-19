@@ -1,7 +1,7 @@
 // exporting the Router object to be used in the main app.
 const { Router }  = require('express');
 
-const { userController } = require('../controllers/userController');
+const { userController } = require('../controllers/userServiceController');
 
 // creating a user router express instance.
 const userServiceRouter = Router();
