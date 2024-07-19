@@ -7,15 +7,16 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 
-
 // importing the app routers
 const { userServiceRouter } = require('./routers/userServiceRouter');
-const { vacationPreferenceRouter } = require('./routers/vacationPreferenceRouter');
+/* const { vacationPreferenceRouter } = require('./routers/vacationPreferenceRouter');
+ */
+app.use(express.json());
 
 // linking the routers to the main app.
 app.use('/appApi/userService', userServiceRouter);
-app.use('/appApi/vacationPreferences', vacationPreferenceRouter);
-
+/* app.use('/appApi/vacationPreferences', vacationPreferenceRouter);
+ */
 
 /* fires up the app */
 app.listen(port, () => {

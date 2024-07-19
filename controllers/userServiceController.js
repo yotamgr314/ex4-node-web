@@ -1,10 +1,9 @@
 // THE ACTUAL IMPLEMENTATION OF ROUTERS REQUEST WILL BE IMPLEMENTED HERE (GET, POST, PUT, DELETE VIA MYSQL QUERIES)
 
-const { dataBaseConnection } = require("../db_connection");
+const { dataBaseConnection } = require("../dbInitHandler");
 const usersTable = "tbl_32_users";
 
 exports.userServiceController = {
-
     async registerUser(req, res) {
         const { username, password } = req.body;
     

@@ -1,19 +1,20 @@
 // exporting the Router object to be used in the main app.
 const { Router }  = require('express');
 
-const { userController } = require('../controllers/userServiceController');
+
+
+const { userServiceController } = require('../controllers/userServiceController');
+
 
 // creating a user router express instance.
 const userServiceRouter = Router();
 
-// LOGIC IMPLEMENTATION OF THE ROUTER API IS GOING TO BE IMPLEMENTED - AKA THE ROUTES OF THE API(GET, POST, PUT, DELETE).
 
+// LOGIC IMPLEMENTATION OF THE ROUTER API IS GOING TO BE IMPLEMENTED - AKA THE ROUTES OF THE API(GET, POST, PUT, DELETE).
+userServiceRouter.post('/register', userServiceController.registerUser);
 
 // making the router object accessible to the main app via app.use('/pathName', routerName)
 module.exports = { userServiceRouter };
-
-
-
 
 
 

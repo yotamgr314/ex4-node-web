@@ -1,5 +1,6 @@
 // exporting the Router object to be used in the main app.
 const { Router }  = require('express');
+
 const { vacationPreferencesController } = require('../controllers/vacationPreferencesController');
 
 // creating an instance of router express object 
