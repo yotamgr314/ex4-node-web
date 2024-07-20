@@ -4,6 +4,14 @@ const usersTable = 'tbl_32_users';
 const vacationCategories = require('../data/vacationCategories.json').vacationCategories;
 const vacationLocation = require('../data/vacationLocation.json').vacationLocation;
 
+// a function to convert into YYY-MM-DD
+function formatDateToYMD(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 exports.vacationPreferencesController = {
     async addPreference(req, res) { 
         const { access_code, start_date, end_date, destination, vacation_type } = req.body;
@@ -62,11 +70,16 @@ exports.vacationPreferencesController = {
             const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable}`);
 
             // המרת פורמט התאריכים
-            const formattedPreferences = preferences.map(pref => ({
-                ...pref,
-                start_date: pref.start_date.toISOString().split('T')[0],
-                end_date: pref.end_date.toISOString().split('T')[0]
-            }));
+            const formattedPreferences = preferences.map(pref => {
+                const startDate = new Date(pref.start_date);
+                const endDate = new Date(pref.end_date);
+
+                return {
+                    ...pref,
+                    start_date: formatDateToYMD(startDate),
+                    end_date: formatDateToYMD(endDate)
+                };
+            });
 
             return res.status(200).json(formattedPreferences);
         } catch (error) {
