@@ -1,12 +1,15 @@
-// dbInitHandler.js
-const mysql = require('mysql2/promise');
-require('dotenv').config();
+exports.dataBaseConnection = {
+    async createConnection() {
+        const mysql = require('mysql2/promise');
+        const connection = await mysql.createConnection({
+            host     : process.env.DB_HOST,
+            user     : process.env.DB_USERNAME,
+            password : process.env.DB_PASSWORD,
+            database : process.env.DB_NAME
+        });
 
-const dataBaseConnection = mysql.createPool({
-    host: process.env.DATABASE_HOST,
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASS,
-    database: process.env.DATABASE_NAME
-});
+        console.log('Database connection established');
 
-module.exports = { dataBaseConnection };
+        return connection;
+    }
+}

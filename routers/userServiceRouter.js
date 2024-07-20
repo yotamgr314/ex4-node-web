@@ -4,6 +4,6 @@ const { userServiceController } = require('../controllers/userServiceController'
 
 const userServiceRouter = Router();
 
-userServiceRouter.post('/register', userServiceController.registerUser);
+userServiceRouter.post('/', userServiceController.registerUser);
 
 module.exports = { userServiceRouter };
