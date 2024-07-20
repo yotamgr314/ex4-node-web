@@ -2,7 +2,7 @@ const { dataBaseConnection } = require('../dbInitHandler');
 const usersTable = 'tbl_32_users';
 
 exports.userServiceController = {
-    
+
     async registerUser(req, res) { 
         const { username, password } = req.body;
 
@@ -34,6 +34,35 @@ exports.userServiceController = {
         } catch (error) {
             console.error('Error registering user:', error);
             return res.status(500).json({ status: 'error', message: 'An error occurred while registering the user', details: error.message });
+        }
+    },
+
+  async getUserToken(req, res) {
+        const { username } = req.query; // שימוש בפרמטרי query
+
+        if (!username) {
+            return res.status(400).json({ status: 'error', message: 'Username is required' });
+        }
+
+        try {
+            const dbConnection = await dataBaseConnection.createConnection();
+            
+            console.log('Received username:', username); // לוגינג של שם המשתמש שהתקבל
+
+            const [existingUser] = await dbConnection.query(`SELECT user_token_code FROM ${usersTable} WHERE user_name = ?`, [username]);
+            
+            console.log('Query Result:', existingUser); // לוגינג של תוצאות השאילתה
+
+            if (existingUser.length === 0) {
+                return res.status(404).json({ status: 'error', message: 'Username not found' });
+            }
+
+            const userToken = existingUser[0].user_token_code;
+            return res.status(200).json({ status: 'success', user_token_code: userToken });
+
+        } catch (error) {
+            console.error('Error fetching user token:', error);
+            return res.status(500).json({ status: 'error', message: 'An error occurred while fetching the user token', details: error.message });
         }
     }
 };
