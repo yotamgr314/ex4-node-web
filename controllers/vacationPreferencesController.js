@@ -3,8 +3,9 @@ const preferencesTable = 'tbl_32_preferences';
 const usersTable = 'tbl_32_users';
 const vacationCategories = require('../data/vacationCategories.json').vacationCategories;
 const vacationLocation = require('../data/vacationLocation.json').vacationLocation;
+const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY; // ודא שהמפתח שלך מוגדר בקובץ .env
 
-// a function to convert into YYY-MM-DD
+// פונקציה להמרת תאריך לפורמט YYYY-MM-DD
 function formatDateToYMD(date) {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -12,7 +13,7 @@ function formatDateToYMD(date) {
     return `${year}-${month}-${day}`;
 }
 
-
+// פונקציה למציאת רוב מתוך מערך
 function findMajority(arr) {
     const freq = {};
     let maxFreq = 0;
@@ -32,6 +33,7 @@ function findMajority(arr) {
     return majorityElement;
 }
 
+// פונקציה למציאת חפיפה בין תאריכים
 function findDateOverlap(dates) {
     let latestStart = new Date(Math.max(...dates.map(d => new Date(d.start_date))));
     let earliestEnd = new Date(Math.min(...dates.map(d => new Date(d.end_date))));
@@ -61,9 +63,17 @@ function findDateOverlap(dates) {
     return null;
 }
 
-
-
-
+// outsourcing api to get weather data
+async function getWeather(destination) {
+    try {
+        const response = await fetch(`http://api.openweathermap.org/data/2.5/weather?q=${destination}&appid=${OPENWEATHERMAP_API_KEY}&units=metric`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching weather data:', error);
+        return null;
+    }
+}
 
 exports.vacationPreferencesController = {
     async addPreference(req, res) { 
@@ -95,10 +105,8 @@ exports.vacationPreferencesController = {
         }
         const dayDifference = (endDate - startDate) / (1000 * 60 * 60 * 24); // חישוב ההפרש בימים
         if (dayDifference >= 7) { // בדיקה אם ההפרש עולה על 7 ימים
-        return res.status(400).json({ status: 'error', message: 'Vacation cannot be longer than 7 days.' });
+            return res.status(400).json({ status: 'error', message: 'Vacation cannot be longer than 7 days.' });
         }
-
-        
 
         try {
             const dbConnection = await dataBaseConnection.createConnection();
@@ -110,12 +118,11 @@ exports.vacationPreferencesController = {
             }
 
             const userId = user[0].user_id;
-             // בדיקת כמות העדפות קיימות
+            // בדיקת כמות העדפות קיימות
             const [existingPreferences] = await dbConnection.query(`SELECT COUNT(*) as count FROM ${preferencesTable} WHERE user_id = ?`, [userId]);
             if (existingPreferences[0].count >= 1) {
                 return res.status(400).json({ status: 'error', message: 'User already has an existing preference. Each user can only have one preference.' });
             }
-
 
             // הוספת העדפות נופש
             await dbConnection.query(`INSERT INTO ${preferencesTable} (vacation_destination, vacation_type, start_date, end_date, user_id) VALUES (?, ?, ?, ?, ?)`, 
@@ -152,6 +159,7 @@ exports.vacationPreferencesController = {
             return res.status(500).json({ status: 'error', message: 'An error occurred while fetching preferences', details: error.message });
         }
     },
+
     async editPreference(req, res) {
         const { accessCode, startDate, endDate, destination, vacationType } = req.body;
 
@@ -183,8 +191,6 @@ exports.vacationPreferencesController = {
         if (dayDifference >= 7) { // בדיקה אם ההפרש עולה על 7 ימים
             return res.status(400).json({ status: 'error', message: 'Vacation cannot be longer than 7 days.' });
         }
-        
-        
 
         try {
             const dbConnection = await dataBaseConnection.createConnection();
@@ -211,6 +217,7 @@ exports.vacationPreferencesController = {
             return res.status(500).json({ status: 'error', message: 'An error occurred while editing the preference', details: error.message });
         }
     },
+
     async getUserPreference(req, res) {
         const { username } = req.params;
 
@@ -252,48 +259,53 @@ exports.vacationPreferencesController = {
         }
     },
 
-
     async calculateVacation(req, res) {
         try {
             const dbConnection = await dataBaseConnection.createConnection();
-
+    
             // בדיקת כמות המשתמשים
             const [users] = await dbConnection.query(`SELECT user_id FROM ${usersTable}`);
             if (users.length < 5) {
                 return res.status(400).json({ status: 'error', message: 'Not all preferences are submitted. Please wait for all users to submit their preferences.' });
             }
-
+    
             // שליפת העדפות כל המשתמשים
             const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable}`);
             if (preferences.length < 5) {
                 return res.status(400).json({ status: 'error', message: 'Not all preferences are submitted. Please wait for all users to submit their preferences.' });
             }
-
+    
             const destinations = preferences.map(p => p.vacation_destination);
             const vacationTypes = preferences.map(p => p.vacation_type);
             const dates = preferences.map(p => ({ start_date: p.start_date, end_date: p.end_date }));
-
+    
             const majorityDestination = findMajority(destinations);
             const majorityVacationType = findMajority(vacationTypes);
             const overlappingDates = findDateOverlap(dates);
-
+    
             if (!overlappingDates) {
                 return res.status(400).json({ status: 'error', message: 'No overlapping dates found. Please adjust your preferences.' });
             }
-
+    
+            const weatherData = await getWeather(majorityDestination);
+    
             return res.status(200).json({ 
                 message: 'Vacation destination calculated successfully',
                 destination: majorityDestination,
                 vacationType: majorityVacationType,
                 startDate: formatDateToYMD(overlappingDates.start_date),
-                endDate: formatDateToYMD(overlappingDates.end_date)
+                endDate: formatDateToYMD(overlappingDates.end_date),
+                weather: weatherData ? {
+                    temperature: `${weatherData.main.temp} °C`,
+                    description: weatherData.weather[0].description,
+                    humidity: `${weatherData.main.humidity} %`,
+                    windSpeed: `${weatherData.wind.speed} m/s`
+                } : 'Weather data not available'
             });
-
+    
         } catch (error) {
             console.error('Error calculating vacation:', error);
             return res.status(500).json({ status: 'error', message: 'An error occurred while calculating the vacation', details: error.message });
         }
     }
-
-
 };
