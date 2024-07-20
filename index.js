@@ -4,6 +4,7 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 const { userServiceRouter } = require('./routers/userServiceRouter');
+const { vacationPreferenceRouter } = require('./routers/vacationPreferencesRouter'); // ודא שהשם נכון
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -17,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 });
  */
 app.use('/appApi/userService', userServiceRouter);
+app.use('/appApi/preferences', vacationPreferenceRouter);
 
 app.use((req, res) => {
     res.json({error: "No API found"});
