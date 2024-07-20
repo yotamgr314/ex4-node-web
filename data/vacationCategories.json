@@ -1,12 +1,9 @@
 {
     "vacationCategories": [
         "Adventure",
-        "Beach",
         "Wildlife",
-        "Historical",
         "Skiing",
         "Spa",
-        "Hiking",
-        "Festival"
+        "Hiking"
     ]
 }

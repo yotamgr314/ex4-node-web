@@ -40,6 +40,12 @@ exports.vacationPreferencesController = {
         if (startDate >= endDate) {
             return res.status(400).json({ status: 'error', message: 'Invalid dates. End date must be after start date.' });
         }
+        const dayDifference = (endDate - startDate) / (1000 * 60 * 60 * 24); // חישוב ההפרש בימים
+        if (dayDifference >= 7) { // בדיקה אם ההפרש עולה על 7 ימים
+        return res.status(400).json({ status: 'error', message: 'Vacation cannot be longer than 7 days.' });
+        }
+
+        
 
         try {
             const dbConnection = await dataBaseConnection.createConnection();
@@ -51,6 +57,12 @@ exports.vacationPreferencesController = {
             }
 
             const userId = user[0].user_id;
+             // בדיקת כמות העדפות קיימות
+            const [existingPreferences] = await dbConnection.query(`SELECT COUNT(*) as count FROM ${preferencesTable} WHERE user_id = ?`, [userId]);
+            if (existingPreferences[0].count >= 1) {
+                return res.status(400).json({ status: 'error', message: 'User already has an existing preference. Each user can only have one preference.' });
+            }
+
 
             // הוספת העדפות נופש
             await dbConnection.query(`INSERT INTO ${preferencesTable} (vacation_destination, vacation_type, start_date, end_date, user_id) VALUES (?, ?, ?, ?, ?)`, 
@@ -114,6 +126,12 @@ exports.vacationPreferencesController = {
         if (startDateObj >= endDateObj) {
             return res.status(400).json({ status: 'error', message: 'Invalid dates. End date must be after start date.' });
         }
+        const dayDifference = (endDateObj - startDateObj) / (1000 * 60 * 60 * 24); // חישוב ההפרש בימים
+        if (dayDifference >= 7) { // בדיקה אם ההפרש עולה על 7 ימים
+            return res.status(400).json({ status: 'error', message: 'Vacation cannot be longer than 7 days.' });
+        }
+        
+        
 
         try {
             const dbConnection = await dataBaseConnection.createConnection();
@@ -138,6 +156,46 @@ exports.vacationPreferencesController = {
         } catch (error) {
             console.error('Error editing preference:', error);
             return res.status(500).json({ status: 'error', message: 'An error occurred while editing the preference', details: error.message });
+        }
+    },
+    async getUserPreference(req, res) {
+        const { username } = req.params;
+
+        if (!username) {
+            return res.status(400).json({ status: 'error', message: 'Username is required' });
+        }
+
+        try {
+            const dbConnection = await dataBaseConnection.createConnection();
+
+            // בדיקת קיום משתמש
+            const [user] = await dbConnection.query(`SELECT user_id FROM ${usersTable} WHERE user_name = ?`, [username]);
+            if (user.length === 0) {
+                return res.status(404).json({ status: 'error', message: 'User not found with the provided username.' });
+            }
+
+            const userId = user[0].user_id;
+
+            // שליפת העדפת המשתמש
+            const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable} WHERE user_id = ?`, [userId]);
+            if (preferences.length === 0) {
+                return res.status(404).json({ status: 'error', message: 'No preferences found for the given user.' });
+            }
+
+            // המרת פורמט התאריכים
+            const formattedPreferences = preferences.map(pref => ({
+                id: pref.vacation_pref_id,
+                start_date: pref.start_date,
+                end_date: pref.end_date,
+                destination: pref.vacation_destination,
+                vacation_type: pref.vacation_type
+            }));
+
+            return res.status(200).json(formattedPreferences);
+
+        } catch (error) {
+            console.error('Error fetching user preference:', error);
+            return res.status(500).json({ status: 'error', message: 'An error occurred while fetching the user preference', details: error.message });
         }
     }
     
