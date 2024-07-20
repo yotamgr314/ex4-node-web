@@ -86,5 +86,60 @@ exports.vacationPreferencesController = {
             console.error('Error fetching preferences:', error);
             return res.status(500).json({ status: 'error', message: 'An error occurred while fetching preferences', details: error.message });
         }
+    },
+    async editPreference(req, res) {
+        const { accessCode, startDate, endDate, destination, vacationType } = req.body;
+
+        // בדיקת קלט חסר
+        if (!accessCode || !startDate || !endDate || !destination || !vacationType) {
+            return res.status(400).json({ status: 'error', message: 'All fields are required: accessCode, startDate, endDate, destination, vacationType' });
+        }
+
+        // בדיקת סוג נופש חוקי
+        if (!vacationCategories.includes(vacationType)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid vacation type. Valid types are: ' + vacationCategories.join(', ') });
+        }
+
+        // בדיקת יעד חוקי
+        if (!vacationLocation.includes(destination)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid destination. Valid destinations are: ' + vacationLocation.join(', ') });
+        }
+
+        // בדיקת תאריכים חוקיים
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        if (isNaN(startDateObj) || isNaN(endDateObj)) {
+            return res.status(400).json({ status: 'error', message: 'Invalid dates format. Use YYYY-MM-DD format.' });
+        }
+        if (startDateObj >= endDateObj) {
+            return res.status(400).json({ status: 'error', message: 'Invalid dates. End date must be after start date.' });
+        }
+
+        try {
+            const dbConnection = await dataBaseConnection.createConnection();
+
+            // בדיקת קוד גישה
+            const [user] = await dbConnection.query(`SELECT user_id FROM ${usersTable} WHERE user_token_code = ?`, [accessCode]);
+            if (user.length === 0) {
+                return res.status(404).json({ status: 'error', message: 'User not found with the provided access code.' });
+            }
+
+            const userId = user[0].user_id;
+
+            // עדכון העדפת נופש
+            const [updateResult] = await dbConnection.query(`UPDATE ${preferencesTable} SET vacation_destination = ?, vacation_type = ?, start_date = ?, end_date = ? WHERE user_id = ? AND start_date = ?`, 
+                                                            [destination, vacationType, startDate, endDate, userId, startDate]);
+            if (updateResult.affectedRows === 0) {
+                return res.status(404).json({ status: 'error', message: 'No preference found for the given user and start date.' });
+            }
+
+            return res.status(200).json({ status: 'success', message: 'Preference updated successfully' });
+    
+        } catch (error) {
+            console.error('Error editing preference:', error);
+            return res.status(500).json({ status: 'error', message: 'An error occurred while editing the preference', details: error.message });
+        }
     }
+    
+
 };

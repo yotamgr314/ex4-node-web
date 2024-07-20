@@ -9,6 +9,9 @@ vacationPreferenceRouter.post('/addPreference', vacationPreferencesController.ad
 // נתיב קיים לקבלת העדפות נופש
 vacationPreferenceRouter.get('/', vacationPreferencesController.getPreferences);
 
+// a route for editing the vacation preferences of the user
+vacationPreferenceRouter.put('/', vacationPreferencesController.editPreference);
+
 module.exports = { vacationPreferenceRouter };
 
 
