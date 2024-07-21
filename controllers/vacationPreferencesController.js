@@ -1,9 +1,10 @@
 const { dataBaseConnection } = require('../dbInitHandler');
+// לא נשתמש ב- require כדי לייבא את node-fetch
 const preferencesTable = 'tbl_32_preferences';
 const usersTable = 'tbl_32_users';
 const vacationCategories = require('../data/vacationCategories.json').vacationCategories;
 const vacationLocation = require('../data/vacationLocation.json').vacationLocation;
-const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY; // ודא שהמפתח שלך מוגדר בקובץ .env
+const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY;
 
 // פונקציה להמרת תאריך לפורמט YYYY-MM-DD
 function formatDateToYMD(date) {
@@ -63,8 +64,10 @@ function findDateOverlap(dates) {
     return null;
 }
 
-// outsourcing api to get weather data
+// פונקציה לקבלת מזג האוויר מ-API חיצוני
 async function getWeather(destination) {
+    // ייבוא דינמי של node-fetch
+    const fetch = (await import('node-fetch')).default;
     try {
         const response = await fetch(`http://api.openweathermap.org/data/2.5/weather?q=${destination}&appid=${OPENWEATHERMAP_API_KEY}&units=metric`);
         const data = await response.json();
@@ -75,56 +78,67 @@ async function getWeather(destination) {
     }
 }
 
+// פונקציה לבדיקת קלט
+function validateInput({ access_code, start_date, end_date, destination, vacation_type }) {
+    if (!access_code || !start_date || !end_date || !destination || !vacation_type) {
+        return 'All fields are required: access_code, start_date, end_date, destination, vacation_type';
+    }
+
+    if (!vacationCategories.includes(vacation_type)) {
+        return `Invalid vacation type. Valid types are: ${vacationCategories.join(', ')}`;
+    }
+
+    if (!vacationLocation.includes(destination)) {
+        return `Invalid destination. Valid destinations are: ${vacationLocation.join(', ')}`;
+    }
+
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+    if (isNaN(startDate) || isNaN(endDate)) {
+        return 'Invalid dates format. Use YYYY-MM-DD format.';
+    }
+    if (startDate >= endDate) {
+        return 'Invalid dates. End date must be after start date.';
+    }
+    const dayDifference = (endDate - startDate) / (1000 * 60 * 60 * 24);
+    if (dayDifference >= 7) {
+        return 'Vacation cannot be longer than 7 days.';
+    }
+
+    return null;
+}
+
+async function checkUserAndPreferences(access_code) {
+    const dbConnection = await dataBaseConnection.createConnection();
+
+    const [user] = await dbConnection.query(`SELECT user_id FROM ${usersTable} WHERE user_token_code = ?`, [access_code]);
+    if (user.length === 0) {
+        throw new Error('User not found with the provided access code.');
+    }
+
+    const userId = user[0].user_id;
+
+    const [existingPreferences] = await dbConnection.query(`SELECT COUNT(*) as count FROM ${preferencesTable} WHERE user_id = ?`, [userId]);
+    if (existingPreferences[0].count >= 1) {
+        throw new Error('User already has an existing preference. Each user can only have one preference.');
+    }
+
+    return userId;
+}
+
 exports.vacationPreferencesController = {
-    async addPreference(req, res) { 
+    async addPreference(req, res) {
         const { access_code, start_date, end_date, destination, vacation_type } = req.body;
 
-        // בדיקת קלט חסר
-        if (!access_code || !start_date || !end_date || !destination || !vacation_type) {
-            return res.status(400).json({ status: 'error', message: 'All fields are required: access_code, start_date, end_date, destination, vacation_type' });
-        }
-
-        // בדיקת סוג נופש חוקי
-        if (!vacationCategories.includes(vacation_type)) {
-            return res.status(400).json({ status: 'error', message: 'Invalid vacation type. Valid types are: ' + vacationCategories.join(', ') });
-        }
-
-        // בדיקת יעד חוקי
-        if (!vacationLocation.includes(destination)) {
-            return res.status(400).json({ status: 'error', message: 'Invalid destination. Valid destinations are: ' + vacationLocation.join(', ') });
-        }
-
-        // בדיקת תאריכים חוקיים
-        const startDate = new Date(start_date);
-        const endDate = new Date(end_date);
-        if (isNaN(startDate) || isNaN(endDate)) {
-            return res.status(400).json({ status: 'error', message: 'Invalid dates format. Use YYYY-MM-DD format.' });
-        }
-        if (startDate >= endDate) {
-            return res.status(400).json({ status: 'error', message: 'Invalid dates. End date must be after start date.' });
-        }
-        const dayDifference = (endDate - startDate) / (1000 * 60 * 60 * 24); // חישוב ההפרש בימים
-        if (dayDifference >= 7) { // בדיקה אם ההפרש עולה על 7 ימים
-            return res.status(400).json({ status: 'error', message: 'Vacation cannot be longer than 7 days.' });
+        const validationError = validateInput({ access_code, start_date, end_date, destination, vacation_type });
+        if (validationError) {
+            return res.status(400).json({ status: 'error', message: validationError });
         }
 
         try {
+            const userId = await checkUserAndPreferences(access_code);
+
             const dbConnection = await dataBaseConnection.createConnection();
-
-            // בדיקת קוד גישה
-            const [user] = await dbConnection.query(`SELECT user_id FROM ${usersTable} WHERE user_token_code = ?`, [access_code]);
-            if (user.length === 0) {
-                return res.status(404).json({ status: 'error', message: 'User not found with the provided access code.' });
-            }
-
-            const userId = user[0].user_id;
-            // בדיקת כמות העדפות קיימות
-            const [existingPreferences] = await dbConnection.query(`SELECT COUNT(*) as count FROM ${preferencesTable} WHERE user_id = ?`, [userId]);
-            if (existingPreferences[0].count >= 1) {
-                return res.status(400).json({ status: 'error', message: 'User already has an existing preference. Each user can only have one preference.' });
-            }
-
-            // הוספת העדפות נופש
             await dbConnection.query(`INSERT INTO ${preferencesTable} (vacation_destination, vacation_type, start_date, end_date, user_id) VALUES (?, ?, ?, ?, ?)`, 
                                       [destination, vacation_type, start_date, end_date, userId]);
 
@@ -141,7 +155,6 @@ exports.vacationPreferencesController = {
             const dbConnection = await dataBaseConnection.createConnection();
             const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable}`);
 
-            // המרת פורמט התאריכים
             const formattedPreferences = preferences.map(pref => {
                 const startDate = new Date(pref.start_date);
                 const endDate = new Date(pref.end_date);
@@ -163,39 +176,14 @@ exports.vacationPreferencesController = {
     async editPreference(req, res) {
         const { accessCode, startDate, endDate, destination, vacationType } = req.body;
 
-        // בדיקת קלט חסר
-        if (!accessCode || !startDate || !endDate || !destination || !vacationType) {
-            return res.status(400).json({ status: 'error', message: 'All fields are required: accessCode, startDate, endDate, destination, vacationType' });
-        }
-
-        // בדיקת סוג נופש חוקי
-        if (!vacationCategories.includes(vacationType)) {
-            return res.status(400).json({ status: 'error', message: 'Invalid vacation type. Valid types are: ' + vacationCategories.join(', ') });
-        }
-
-        // בדיקת יעד חוקי
-        if (!vacationLocation.includes(destination)) {
-            return res.status(400).json({ status: 'error', message: 'Invalid destination. Valid destinations are: ' + vacationLocation.join(', ') });
-        }
-
-        // בדיקת תאריכים חוקיים
-        const startDateObj = new Date(startDate);
-        const endDateObj = new Date(endDate);
-        if (isNaN(startDateObj) || isNaN(endDateObj)) {
-            return res.status(400).json({ status: 'error', message: 'Invalid dates format. Use YYYY-MM-DD format.' });
-        }
-        if (startDateObj >= endDateObj) {
-            return res.status(400).json({ status: 'error', message: 'Invalid dates. End date must be after start date.' });
-        }
-        const dayDifference = (endDateObj - startDateObj) / (1000 * 60 * 60 * 24); // חישוב ההפרש בימים
-        if (dayDifference >= 7) { // בדיקה אם ההפרש עולה על 7 ימים
-            return res.status(400).json({ status: 'error', message: 'Vacation cannot be longer than 7 days.' });
+        const validationError = validateInput({ access_code: accessCode, start_date: startDate, end_date: endDate, destination, vacation_type: vacationType });
+        if (validationError) {
+            return res.status(400).json({ status: 'error', message: validationError });
         }
 
         try {
             const dbConnection = await dataBaseConnection.createConnection();
 
-            // בדיקת קוד גישה
             const [user] = await dbConnection.query(`SELECT user_id FROM ${usersTable} WHERE user_token_code = ?`, [accessCode]);
             if (user.length === 0) {
                 return res.status(404).json({ status: 'error', message: 'User not found with the provided access code.' });
@@ -203,7 +191,6 @@ exports.vacationPreferencesController = {
 
             const userId = user[0].user_id;
 
-            // עדכון העדפת נופש
             const [updateResult] = await dbConnection.query(`UPDATE ${preferencesTable} SET vacation_destination = ?, vacation_type = ?, start_date = ?, end_date = ? WHERE user_id = ? AND start_date = ?`, 
                                                             [destination, vacationType, startDate, endDate, userId, startDate]);
             if (updateResult.affectedRows === 0) {
@@ -228,7 +215,6 @@ exports.vacationPreferencesController = {
         try {
             const dbConnection = await dataBaseConnection.createConnection();
 
-            // בדיקת קיום משתמש
             const [user] = await dbConnection.query(`SELECT user_id FROM ${usersTable} WHERE user_name = ?`, [username]);
             if (user.length === 0) {
                 return res.status(404).json({ status: 'error', message: 'User not found with the provided username.' });
@@ -236,13 +222,11 @@ exports.vacationPreferencesController = {
 
             const userId = user[0].user_id;
 
-            // שליפת העדפת המשתמש
             const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable} WHERE user_id = ?`, [userId]);
             if (preferences.length === 0) {
                 return res.status(404).json({ status: 'error', message: 'No preferences found for the given user.' });
             }
 
-            // המרת פורמט התאריכים
             const formattedPreferences = preferences.map(pref => ({
                 id: pref.vacation_pref_id,
                 start_date: pref.start_date,
@@ -262,33 +246,31 @@ exports.vacationPreferencesController = {
     async calculateVacation(req, res) {
         try {
             const dbConnection = await dataBaseConnection.createConnection();
-    
-            // בדיקת כמות המשתמשים
+
             const [users] = await dbConnection.query(`SELECT user_id FROM ${usersTable}`);
             if (users.length < 5) {
                 return res.status(400).json({ status: 'error', message: 'Not all preferences are submitted. Please wait for all users to submit their preferences.' });
             }
-    
-            // שליפת העדפות כל המשתמשים
+
             const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable}`);
             if (preferences.length < 5) {
                 return res.status(400).json({ status: 'error', message: 'Not all preferences are submitted. Please wait for all users to submit their preferences.' });
             }
-    
+
             const destinations = preferences.map(p => p.vacation_destination);
             const vacationTypes = preferences.map(p => p.vacation_type);
             const dates = preferences.map(p => ({ start_date: p.start_date, end_date: p.end_date }));
-    
+
             const majorityDestination = findMajority(destinations);
             const majorityVacationType = findMajority(vacationTypes);
             const overlappingDates = findDateOverlap(dates);
-    
+
             if (!overlappingDates) {
                 return res.status(400).json({ status: 'error', message: 'No overlapping dates found. Please adjust your preferences.' });
             }
-    
+
             const weatherData = await getWeather(majorityDestination);
-    
+
             return res.status(200).json({ 
                 message: 'Vacation destination calculated successfully',
                 destination: majorityDestination,
@@ -302,7 +284,7 @@ exports.vacationPreferencesController = {
                     windSpeed: `${weatherData.wind.speed} m/s`
                 } : 'Weather data not available'
             });
-    
+
         } catch (error) {
             console.error('Error calculating vacation:', error);
             return res.status(500).json({ status: 'error', message: 'An error occurred while calculating the vacation', details: error.message });
