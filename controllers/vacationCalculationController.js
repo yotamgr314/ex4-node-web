@@ -3,7 +3,6 @@ const preferencesTable = 'tbl_32_preferences';
 const usersTable = 'tbl_32_users';
 const OPENWEATHERMAP_API_KEY = process.env.OPENWEATHERMAP_API_KEY;
 
-// פונקציה למציאת רוב מתוך מערך
 function findMajority(arr) {
     const freq = {};
     let maxFreq = 0;
@@ -23,7 +22,6 @@ function findMajority(arr) {
     return majorityElement;
 }
 
-// פונקציה למציאת חפיפה בין תאריכים
 function findDateOverlap(dates) {
     let latestStart = new Date(Math.max(...dates.map(d => new Date(d.start_date))));
     let earliestEnd = new Date(Math.min(...dates.map(d => new Date(d.end_date))));
@@ -35,7 +33,6 @@ function findDateOverlap(dates) {
         };
     }
 
-    // חפיפה חלקית
     const sortedDates = dates.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
     for (let i = 0; i < sortedDates.length - 1; i++) {
         for (let j = i + 1; j < sortedDates.length; j++) {
@@ -53,7 +50,6 @@ function findDateOverlap(dates) {
     return null;
 }
 
-// פונקציה להמרת תאריך לפורמט YYYY-MM-DD
 function formatDateToYMD(date) {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -61,7 +57,6 @@ function formatDateToYMD(date) {
     return `${year}-${month}-${day}`;
 }
 
-// פונקציה לקבלת מזג האוויר מ-API חיצוני
 async function getWeather(destination) {
     const fetch = (await import('node-fetch')).default;
     try {
@@ -83,14 +78,12 @@ exports.vacationCalculationController = {
             const dbConnection = await dataBaseConnection.createConnection();
             console.log("Database connection established");
     
-            // בדיקת כמות המשתמשים
             const [users] = await dbConnection.query(`SELECT user_id FROM ${usersTable}`);
             console.log("Number of users:", users.length);
             if (users.length < 5) {
                 return res.status(400).json({ status: 'error', message: 'Not all preferences are submitted. Please wait for all users to submit their preferences.' });
             }
     
-            // שליפת העדפות כל המשתמשים
             const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable}`);
             console.log("Number of preferences:", preferences.length);
             if (preferences.length < 5) {

@@ -38,7 +38,7 @@ exports.userServiceController = {
     },
 
     async getUserToken(req, res) {
-        const { username } = req.query; // שימוש בפרמטרי query
+        const { username } = req.query; 
 
         if (!username) {
             return res.status(400).json({ status: 'error', message: 'Username is required' });
@@ -47,11 +47,11 @@ exports.userServiceController = {
         try {
             const dbConnection = await dataBaseConnection.createConnection();
             
-            console.log('Received username:', username); // לוגינג של שם המשתמש שהתקבל
+            console.log('Received username:', username); 
 
             const [existingUser] = await dbConnection.query(`SELECT user_token_code FROM ${usersTable} WHERE user_name = ?`, [username]);
             
-            console.log('Query Result:', existingUser); // לוגינג של תוצאות השאילתה
+            console.log('Query Result:', existingUser); 
 
             if (existingUser.length === 0) {
                 return res.status(404).json({ status: 'error', message: 'Username not found' });

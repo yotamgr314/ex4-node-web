@@ -4,7 +4,6 @@ const usersTable = 'tbl_32_users';
 const vacationCategories = require('../data/vacationCategories.json').vacationCategories;
 const vacationLocation = require('../data/vacationLocation.json').vacationLocation;
 
-// פונקציה להמרת תאריך לפורמט YYYY-MM-DD
 function formatDateToYMD(date) {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -12,7 +11,6 @@ function formatDateToYMD(date) {
     return `${year}-${month}-${day}`;
 }
 
-// פונקציה לבדיקת קלט
 function validateInput({ access_code, start_date, end_date, destination, vacation_type }) {
     if (!access_code || !start_date || !end_date || !destination || !vacation_type) {
         return 'All fields are required: access_code, start_date, end_date, destination, vacation_type';
@@ -175,5 +173,5 @@ exports.vacationPreferencesController = {
             console.error('Error fetching user preference:', error);
             return res.status(500).json({ status: 'error', message: 'An error occurred while fetching the user preference', details: error.message });
         }
-    },
+    }
 };

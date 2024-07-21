@@ -22,10 +22,6 @@ app.use('/appApi/userService', userServiceRouter);
 app.use('/appApi/preferences', vacationPreferenceRouter);
 app.use('/appApi/calculation', vacationCalculationRouter);
 
-app.get('/', (req, res) => {
-    res.send('Welcome to the vacation app!');
-});
-
 app.use((req, res) => {
     res.json({error: "No API found"});
 });
