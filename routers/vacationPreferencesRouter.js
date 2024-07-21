@@ -3,21 +3,17 @@ const { vacationPreferencesController } = require('../controllers/vacationPrefer
 
 const vacationPreferenceRouter = Router();
 
-vacationPreferenceRouter.get('/vacation_destination', vacationPreferencesController.calculateVacation);
-
-// a route for adding a new vacation preference to user.
+// Route for adding a new vacation preference to user.
 vacationPreferenceRouter.post('/addPreference', vacationPreferencesController.addPreference);
 
-// a route for the entire vacation preferences in the preferences table.
+// Route for the entire vacation preferences in the preferences table.
 vacationPreferenceRouter.get('/', vacationPreferencesController.getPreferences);
 
-// a route for editing the vacation preferences of the user
+// Route for editing the vacation preferences of the user.
 vacationPreferenceRouter.put('/', vacationPreferencesController.editPreference);
 
-// a route for getting the vacation preferences of a specific user.
+// Route for getting the vacation preferences of a specific user.
 vacationPreferenceRouter.get('/:username', vacationPreferencesController.getUserPreference);
-
-
 
 module.exports = { vacationPreferenceRouter };
 

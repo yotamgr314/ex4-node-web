@@ -37,7 +37,7 @@ exports.userServiceController = {
         }
     },
 
-  async getUserToken(req, res) {
+    async getUserToken(req, res) {
         const { username } = req.query; // שימוש בפרמטרי query
 
         if (!username) {
