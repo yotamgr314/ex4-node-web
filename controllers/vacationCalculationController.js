@@ -65,8 +65,11 @@ function formatDateToYMD(date) {
 async function getWeather(destination) {
     const fetch = (await import('node-fetch')).default;
     try {
-        const response = await fetch(`http://api.openweathermap.org/data/2.5/weather?q=${destination}&appid=${OPENWEATHERMAP_API_KEY}&units=metric`);
+        const response = await fetch(`http://api.openweathermap.org/data/2.5/weather?q=${destination}&appid=${process.env.OPENWEATHERMAP_API_KEY}&units=metric`);
         const data = await response.json();
+        if (data.cod !== 200) {
+            throw new Error(data.message);
+        }
         return data;
     } catch (error) {
         console.error('Error fetching weather data:', error);
@@ -78,15 +81,18 @@ exports.vacationCalculationController = {
     async calculateVacation(req, res) {
         try {
             const dbConnection = await dataBaseConnection.createConnection();
+            console.log("Database connection established");
     
             // בדיקת כמות המשתמשים
             const [users] = await dbConnection.query(`SELECT user_id FROM ${usersTable}`);
+            console.log("Number of users:", users.length);
             if (users.length < 5) {
                 return res.status(400).json({ status: 'error', message: 'Not all preferences are submitted. Please wait for all users to submit their preferences.' });
             }
     
             // שליפת העדפות כל המשתמשים
             const [preferences] = await dbConnection.query(`SELECT * FROM ${preferencesTable}`);
+            console.log("Number of preferences:", preferences.length);
             if (preferences.length < 5) {
                 return res.status(400).json({ status: 'error', message: 'Not all preferences are submitted. Please wait for all users to submit their preferences.' });
             }
@@ -103,7 +109,9 @@ exports.vacationCalculationController = {
                 return res.status(400).json({ status: 'error', message: 'No overlapping dates found. Please adjust your preferences.' });
             }
     
+            console.log("Majority destination:", majorityDestination);
             const weatherData = await getWeather(majorityDestination);
+            console.log("Weather data:", weatherData);
     
             return res.status(200).json({ 
                 message: 'Vacation destination calculated successfully',
